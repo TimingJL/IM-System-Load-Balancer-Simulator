@@ -1,0 +1,42 @@
+2015.06.30 規格設定
+
+Issue:	找文獻關於pareto network delay
+		要寫progress文件
+
+MsgHead:{'message ID', 'sender ID', 'receiver ID', 'network delay'}
+
+Clinet:	能隨意產生上千上萬user
+		能模擬user上下線(poisson) =>是否記錄上下線時間?
+		要決定message要送給誰(記錄發送者及收件者)
+		要告訴LB現在自己是上線還是下線
+		要為每個接收者決定他每個封包的network delay，第一次上線用pareto決定，接下來要加上delta(random.normal)
+
+LB:		要有分配user的policy(random/RR/lest message queue)
+		要知道這是誰送的，要送給誰
+		要決定哪個user被哪個CM服務
+		user下線再重新上線之後要重新分配
+		要知道user現在是上線還是下線
+
+CM:		能隨意調整CM的個數
+		要記錄現在自己服務哪些user，能隨意加入或是退出
+		要決定time out，並且決定requeue時的network delay(requeue時依據什麼來決定?)
+
+===========================================================
+
+初始:	1. 開啟LB.py，在裡面決定policy
+		2. 開啟CM.py，會產生指定個數的CM，並且跟LB做binding，讓LB知道目前有哪些CM跟他做連線
+		3. 開啟Client.py，會產生指定個數的user，開始以poisson interarrival上下線，上線時並且開始送request(先假設離線可以收訊息)
+
+流程:	1. Client產生指定個數user，multi-process
+		2. 上線者告訴LB我上線了，下線亦然，然後LB會將user以指定policy分配給CM註冊，下線會從CM剔除
+		3. 分配並註冊好的user，上線者可以開始送訊息，送給LB之後，LB會依據收件者，將訊息送給收件者所在的CM
+			(想想怎麼一對多聊天，一對多是送多個訊息還是送一個訊息?)
+		4. CM收到訊息之後，放進queue等待被服務，並記錄進到queue的時間
+		5. CM裡，把訊息拿出來，記錄訊息進到server的時間，sleep他的network delay，若超過time out則requeue，並給予一個新的network delay
+		6. 訊息出來之後，記錄其完成時間
+			(requeue的response time&queueing time要怎麼算?)
+
+註冊流程:
+		1. Load Balancer要先開啟並waiting
+		2. 接著開啟CM，並向LB註冊
+		3. 接著開啟Client，user一上線便向LB註冊，給予一個CM
