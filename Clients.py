@@ -77,6 +77,9 @@ class User(threading.Thread):
 				else:
 					 tmp = np.random.pareto(1.1, 1) + 0. #(reset) x = np.random.pareto(shape, size) + lower
 					 self.network_delay = tmp[0]
+				redisDB.set("user["+str(self.user_ID)+"]_last_out_Queue_time",0)#in order to calculate Tau(init when user online)
+
+
 			redisDB.set("user["+str(self.user_ID)+"]_network_delay",self.network_delay)
 
 			#next online/leave time
@@ -102,7 +105,7 @@ class User(threading.Thread):
 				if does_use_random_seed:
 					t = self.message_sending_List.popleft()
 				else:
-					t = self.nextTime(1.0/1.)
+					t = self.nextTime(1.0/5)
 				time.sleep(t)
 
 				#random generate a receiver
@@ -114,29 +117,29 @@ class User(threading.Thread):
 					receiver_ID_tuple = random.randint(1,number_of_users),#a <= N <= b', tuple(1,)
 					receiver_ID = receiver_ID_tuple[0]
 
-				#assign the sudo network delay 
-				network_delay = userList[receiver_ID-1].network_delay#type = array
-				if does_use_random_seed:
-					delta = self.delta_List.popleft()
-				else:
-					tmp = np.random.normal(0, 0.1, 1)#np.random.normal(mean , standard deviation, 1), type = array
-					delta = tmp[0]
-				delayTime = network_delay+delta
+				# #assign the sudo network delay 
+				# network_delay = userList[receiver_ID-1].network_delay#type = array
+				# if does_use_random_seed:
+				# 	delta = self.delta_List.popleft()
+				# else:
+				# 	tmp = np.random.normal(0, 0.1, 1)#np.random.normal(mean , standard deviation, 1), type = array
+				# 	delta = tmp[0]
+				# delayTime = network_delay+delta
 
-				#delayTime must > 0
-				if (delayTime < 0.):
-					delayTime = 0.00001
-				#TCP session timeout = 1800: https://nkongkimo.wordpress.com/2010/09/
-				if (delayTime > 1800.):
-					delayTime = 1800.
-				userList[receiver_ID-1].network_delay = delayTime
+				# #delayTime must > 0
+				# if (delayTime < 0.):
+				# 	delayTime = 0.00001
+				# #TCP session timeout = 1800: https://nkongkimo.wordpress.com/2010/09/
+				# if (delayTime > 1800.):
+				# 	delayTime = 1800.
+				# userList[receiver_ID-1].network_delay = delayTime
 				#redisDB.set("user["+str(self.user_ID)+"]_network_delay")
 
 				message = {"test_time_stamp":SimulateStart, 
 							"sender_ID":self.user_ID,
 							"receiver_ID":receiver_ID,#a <= N <= b
 							"message_birth_time":time.time(),
-							"network_delay":delayTime,
+							#"network_delay":delayTime,
 							"is_VIP":False,
 							}
 				#print "ID[%r], Delay: %r"%(message["sender_ID"],message["network_delay"])

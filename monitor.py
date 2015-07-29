@@ -12,6 +12,10 @@ while True:
 	print "\n"
 
 	for i in range(1, number_of_CMs+1):
-		print "CM[%r] Reponse Time: %r" %(i, redisDB.get("CM[" + str(i) + "]temp_response_time"))
-	print "==================================="	
+		print "CM[%r] Reponse Time_MM1: %r" %(i, redisDB.get("CM[" + str(i) + "]temp_response_time"))
+	print "\n"
+
+	for i in range(1, number_of_CMs+1):
+		print "CM[%r] Reponse Time_MG1: %r" %(i, redisDB.get("CM[" + str(i) + "]MG1_temp_response_time"))
+	print "==================================="			
 	time.sleep(1)

@@ -57,7 +57,8 @@ class LoadBalancer(threading.Thread):
 		#CM_ID = SchedulerPolicy.myRandom()
 		#CM_ID = SchedulerPolicy.myRR()
 		#CM_ID = SchedulerPolicy.myLMQ()
-		CM_ID = SchedulerPolicy.myMM1()
+		#CM_ID = SchedulerPolicy.myMM1()
+		CM_ID = SchedulerPolicy.myMG1()
 		#============================================#
 		self.in_which_CM = CM_ID
 		#print 'user_%r to CM_%r' %(self.user_ID, self.in_which_CM)
