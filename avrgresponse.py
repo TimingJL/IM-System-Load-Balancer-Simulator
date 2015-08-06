@@ -16,45 +16,31 @@ from collections import deque
 redisDB = redis.StrictRedis(host='localhost', port=6379, db=0)
 redisMQ = redis.Redis()
 
-a = int(redisDB.get("Finish_List[4]_job_number"))
-b = redisDB.get("Finish_List[4][" + str(a) + "]")
-print "a: %r"%(a)
-j1 = 0
-r_RR = 0.
-for i in range(1,a):# from 1 to n
-	tmp = redisDB.get("Finish_List[4][" + str(i) + "]")
-	tmp_dict = ast.literal_eval(tmp)
-	if int(tmp_dict["window"]) < 21:
-		j1 = j1 + 1
-		r_RR = r_RR + float(tmp_dict["response_time"])
-
-#===================================================================
-
-c = int(redisDB.get("Finish_List[5.1]_job_number"))
-print "c: %r"%(c)
-j2 = 0
-r_Random = 0.
-for i in range(1,c):# from 1 to n
-	tmp = redisDB.get("Finish_List[5.1][" + str(i) + "]")
-	tmp_dict = ast.literal_eval(tmp)
-	if int(tmp_dict["window"]) < 21:
-		j2 = j2 + 1
-		r_Random = r_Random + float(tmp_dict["response_time"])
-
-#===================================================================
-
-d = int(redisDB.get("Finish_List[6]_job_number"))
-print "d: %r"%(d)
-j3 = 0
-r_LMQ = 0.
-for i in range(1,d):# from 1 to n
-	tmp = redisDB.get("Finish_List[6][" + str(i) + "]")
-	tmp_dict = ast.literal_eval(tmp)
-	if int(tmp_dict["window"]) < 21:
-		j3 = j3 + 1
-		r_LMQ = r_LMQ + float(tmp_dict["response_time"])
 
 
-print "Round-Robin: %r" %(r_RR/j1)
-print "Random: %r" %(r_Random/j2)
-print "LMQ: %r" %(r_LMQ/j3)
+def average_function(Finish_List_Name):
+	#print "Finish_List_Name: %r" %(Finish_List_Name)
+	job_number = int(redisDB.get("Finish_List["+Finish_List_Name+"]_job_number"))
+	j = 0
+	r = 0.
+	for i in range(1, job_number):
+		tmp = redisDB.get("Finish_List["+Finish_List_Name+"][" + str(i) + "]")
+		tmp_dict = ast.literal_eval(tmp)
+		if int(tmp_dict["window"]) < 31:
+			j = j + 1
+			r = r + float(tmp_dict["response_time"])
+	print "%r response time: %r \t Job Number: %r" %(Finish_List_Name, r/j, j)
+
+print "\n"
+
+#average_function("MG1")
+#average_function("MM1")
+#average_function("SQF")
+average_function("RR")
+#average_function("MG1_RR")
+#average_function("MG1_RR3")
+#average_function("SQF_merge_LNU")
+#average_function("MM1_merge_LNU")
+
+
+print "\n"

@@ -16,6 +16,14 @@ from collections import deque
 
 redisDB = redis.StrictRedis(host='localhost', port=6379, db=0)
 redisMQ = redis.Redis()
+Finish_List_Name = "RR"
+#Finish_List_Name = "SQF"
+#Finish_List_Name = "MM1"
+#Finish_List_Name = "MG1"
+#Finish_List_Name = "MG1_RR3"
+#Finish_List_Name = "SQF_merge_LNU"
+#Finish_List_Name = "MM1_merge_LNU"
+
 
 number_of_CMs = parameter.number_of_CMs
 
@@ -29,16 +37,37 @@ def myAutoCorrelationDistribution(p, first_network_delay):
 		p = 0.00000001
 	x_value = random.random()
 	y_value = 0
-	a = 1-(1/((p**5)/(p**4)))
-	b = 1-(1/((1**5)/(p**4)))
+
+	p5 = (p**5)
+	p4 = (p**4)
+	if p4 == 0.:
+		p4 = 0.00000001
+	if p5 == 0.:
+		p5 = 0.00000001
+
+	p5Dp4 = p5/p4
+	if p5Dp4 == 0.:
+		p5Dp4 = 0.00000001
+
+	a = 1-(1/p5Dp4)
+	b = 1-(1/((1**5)/p4))
+
+	if (b-a) == 0.:
+		b = b + 0.00000001
+
+	
 	if x_value <= p:
 		# 0 < x_value <= p
-		y_value = x_value**5/p**4
+		y_value = x_value**5/p4
 	else:
 		# p < x_value <= 1
-		y_value_raw = 1-(1/((x_value**5)/(p**4)))
+		y_value_raw = 1-(1/((x_value**5)/p4))
 		y_value = ((y_value_raw - a)/(b-a)) * (1-p) + p
+
+	############################
 	second_network_delay = np.random.pareto(1.1, 1) + 0.
+	#second_network_delay = (-math.log(1.0 - random.random()) / 1.1)
+	############################
 	delayTime = (y_value * first_network_delay) + (1.-y_value)*(second_network_delay[0])
 
 	print "y_value: %r" %(y_value)
@@ -50,9 +79,9 @@ def myAutoCorrelationDistribution(p, first_network_delay):
 def Finished():
 	item = 1
 	while True:
-		val = redisMQ.blpop("Finish_List[1]")
-		redisDB.set("Finish_List[5.1][" + str(item) + "]",val[1])
-		redisDB.set("Finish_List[5.1]_job_number",item)
+		val = redisMQ.blpop("Finish_List["+Finish_List_Name+"]")
+		redisDB.set("Finish_List["+Finish_List_Name+"][" + str(item) + "]",val[1])
+		redisDB.set("Finish_List["+Finish_List_Name+"]_job_number",item)
 		item = item + 1
 
 def clock():
@@ -97,7 +126,7 @@ def MG1_sliding_response_time():
 						rho = 1. - 0.000001
 					if total_service_time == 0.:
 						total_service_time = 0.000001
-						
+
 					E_Se = 0.5*(total_service_time_power2/total_service_time)
 					E_TQ = (rho/(1-rho))*(E_Se)
 
@@ -125,11 +154,18 @@ def MM1_sliding_response_time():
 		if int(redisDB.get("CM_clock")) > window_size:
 			time.sleep(1)
 			for i in range(1, number_of_CMs+1):
+				avr_queueLength = 0
+				queue_length_list = eval(redisDB.get("CM[" + str(i) + "]QueueLength_list"))
+				for k in range(-1, -1*(window_size+1),-1):
+					avr_queueLength = avr_queueLength + int(queue_length_list[k])
+				avr_queueLength = avr_queueLength/window_size
 				queueLength = int(redisDB.get("CM[" + str(i) + "]QueueLength"))
 				if queueLength == 0:
 					redisDB.set("CM[" + str(i) + "]temp_response_time", 0)
 				else:
-					rho = ((-1*queueLength) + ((queueLength**2) + 4*queueLength)**0.5)/2
+					rho = ((-1*avr_queueLength) + ((avr_queueLength**2) + 4*avr_queueLength)**0.5)/2
+					if rho == 0.:
+						rho = 0.000001
 					arrival_num = 0.
 					service_num = 0.
 					income_list = eval(redisDB.get("CM[" + str(i) + "]income_list"))
@@ -157,6 +193,52 @@ def MM1_sliding_response_time():
 							redisDB.set("CM[" + str(i) + "]temp_response_time", temp)
 
 
+def MM1_pseudo_length_sliding_response_time():
+	window_size = parameter.window_size
+
+	while True:
+		if int(redisDB.get("CM_clock")) > window_size:
+			time.sleep(1)
+			for i in range(1, number_of_CMs+1):
+				user_list = eval(redisDB.get("CM["+str(i)+"]_user_list"))
+				avr_queueLength = 0
+				queue_length_list = eval(redisDB.get("CM[" + str(i) + "]QueueLength_list"))
+				for k in range(-1, -1*(window_size+1),-1):
+					avr_queueLength = avr_queueLength + int(queue_length_list[k])
+				avr_queueLength = (avr_queueLength/window_size) + len(user_list)# pseudo queue length(queue length + number of user)
+				queueLength = int(redisDB.get("CM[" + str(i) + "]QueueLength"))
+				if (queueLength + len(user_list)) == 0:# pseudo queue length(queue length + number of user)
+					redisDB.set("CM[" + str(i) + "]_pseudo_length_response_time", 0)
+				else:
+					rho = ((-1*avr_queueLength) + ((avr_queueLength**2) + 4*avr_queueLength)**0.5)/2
+					if rho == 0.:
+						rho = 0.000001					
+					arrival_num = 0.
+					service_num = 0.
+					income_list = eval(redisDB.get("CM[" + str(i) + "]income_list"))
+					outcome_list = eval(redisDB.get("CM[" + str(i) + "]outcome_list"))
+					for j in range(-1, -1*(window_size+1),-1):
+						arrival_num = arrival_num + income_list[j]
+						service_num = service_num + outcome_list[j]
+					Lambda = arrival_num/window_size
+					#Mu = service_num/window_size
+					Mu = Lambda/rho
+
+					if Lambda == 0:
+						if Mu == 0:
+							temp = (90000+queueLength)
+							redisDB.set("CM[" + str(i) + "]_pseudo_length_response_time", temp)
+						else:
+							temp = (1./Mu)
+							redisDB.set("CM[" + str(i) + "]_pseudo_length_response_time", temp)
+					else:
+						if Lambda > Mu:
+							temp = (90000+queueLength)
+							redisDB.set("CM[" + str(i) + "]_pseudo_length_response_time", temp)
+						else:
+							temp = (1./(Mu-Lambda))
+							redisDB.set("CM[" + str(i) + "]_pseudo_length_response_time", temp)
+
 #connection_manager define
 class Connection_Manager(threading.Thread):	
 	def __init__(self, CM_ID):
@@ -171,6 +253,7 @@ class Connection_Manager(threading.Thread):
 		self.outcome_list = []
 		self.service_time_list = []
 		self.service_time_power2_list = []
+		self.queue_length_list = []
 		self.service_time = 0.
 		self.service_time_power2 = 0.
 		self.temp_income_job = 0.
@@ -178,6 +261,7 @@ class Connection_Manager(threading.Thread):
 		self.temp_response_time = 0.
 		redisDB.set("CM[" + str(self.CM_ID) + "]temp_response_time", 0)
 		redisDB.set("CM[" + str(self.CM_ID) + "]MG1_temp_response_time", 0)
+		redisDB.set("CM[" + str(self.CM_ID) + "]_pseudo_length_response_time", 0)
 
 	def time_window(self):
 		while True:
@@ -191,10 +275,13 @@ class Connection_Manager(threading.Thread):
 			self.outcome_list.append(self.temp_outcome_job)
 			self.service_time_list.append(self.service_time)
 			self.service_time_power2_list.append(self.service_time_power2)
+			queue_length = redisDB.get("CM[" + str(self.CM_ID) + "]QueueLength")
+			self.queue_length_list.append(queue_length)
 			redisDB.set("CM[" + str(self.CM_ID) + "]income_list",self.income_list)
 			redisDB.set("CM[" + str(self.CM_ID) + "]outcome_list",self.outcome_list)
 			redisDB.set("CM[" + str(self.CM_ID) + "]service_time_list",self.service_time_list)
-			redisDB.set("CM[" + str(self.CM_ID) + "]service_time_power2_list",self.service_time_power2_list)			
+			redisDB.set("CM[" + str(self.CM_ID) + "]service_time_power2_list",self.service_time_power2_list)
+			redisDB.set("CM[" + str(self.CM_ID) + "]QueueLength_list",self.queue_length_list)
 			self.temp_income_job = 0.
 			self.temp_outcome_job = 0.
 			self.service_time = 0.
@@ -252,7 +339,7 @@ class Connection_Manager(threading.Thread):
 				message.setdefault("window",self.window)
 				print self.window
 
-				redisMQ.rpush("Finish_List[1]", message)
+				redisMQ.rpush("Finish_List["+Finish_List_Name+"]", message)
 
 	#connection_manager thread start
 	def run(self):
@@ -306,3 +393,6 @@ th6.start()
 
 th7 = Thread(target=MG1_sliding_response_time)
 th7.start()
+
+th8 = Thread(target=MM1_pseudo_length_sliding_response_time)
+th8.start()
