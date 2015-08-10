@@ -17,6 +17,8 @@ redisDB = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 number_of_users = parameter.number_of_users
 SimulateStart = strftime("%Y%m%d-%H%M%S %P")
+LogBehavior = '1'
+f = open('./log/' + SimulateStart + '-LogBehavior_'+ LogBehavior +'.txt', 'a+')
 does_use_random_seed = False
 Log = []
 
@@ -36,12 +38,14 @@ class User(threading.Thread):
 		###################################
 		LogTemp = {"type":0,"content":request}
 		Log.append(LogTemp)
+		f.write(str(LogTemp) + "\n")
 		###################################		
 		print "init is regist: %r" %(redisDB.get("is_regist["+str(self.user_ID)+']'))
 
 		###########netowrk delay#################
-		temp = np.random.pareto(1.1, 1) + 0. #(init) x = np.random.pareto(shape, size) + lower
-		self.network_delay = temp[0]
+		temp = (-math.log(1.0 - random.random()) / (1/0.6))
+		#temp = np.random.pareto(1.1, 1) + 0. #(init) x = np.random.pareto(shape, size) + lower
+		self.network_delay = temp
 		#self.network_delay = (-math.log(1.0 - random.random()) / 1.1)
 
 	#Generate Random Timings for a Poisson Process
@@ -60,11 +64,13 @@ class User(threading.Thread):
 			###################################
 			LogTemp = {"type":0,"content":request}
 			Log.append(LogTemp)
+			f.write(str(LogTemp) + "\n")
 			###################################
 			if(self.is_online):
 				#when online, generate sudo network delay
-				tmp = np.random.pareto(1.1, 1) + 0. #(reset) x = np.random.pareto(shape, size) + lower
-				self.network_delay = tmp[0]
+				tmp = (-math.log(1.0 - random.random()) / (1/0.6))
+				#tmp = np.random.pareto(1.1, 1) + 0. #(reset) x = np.random.pareto(shape, size) + lower
+				self.network_delay = tmp
 				redisDB.set("user["+str(self.user_ID)+"]_last_out_Queue_time",0)#in order to calculate Tau(init when user online)
 
 
@@ -108,6 +114,7 @@ class User(threading.Thread):
 				###################################
 				LogTemp = {"type":1,"content":message}
 				Log.append(LogTemp)
+				f.write(str(LogTemp) + "\n")
 				###################################
 				#next sending time
 				t = self.nextTime(1.0/30.)
@@ -124,14 +131,18 @@ for i in userList:
 	#time.sleep(3)
 
 def LogBehavior():
-	time.sleep(30*60)
+	
+	f = open('./log/' + SimulateStart + '-LogBehavior_'+ LogBehavior +'.txt', 'w+')
+	time.sleep(60*60)
 	i = 1
 	for item in Log:
-		redisDB.set("LogBehavior[" + str(i) + "][3]",item)
-		redisDB.set("LogItemNumber[3]",i)
+		# redisDB.set("LogBehavior[" + str(i) + "][" +LogBehavior+ "]",item)
+		# redisDB.set("LogItemNumber[" +LogBehavior+ "]",i)
+		f.write(str(item) + "\n")
 		i = i + 1
 		
 	print "OK============================================================================="
+	f.close()
 	# while True:
 	# 	print Log
 	# 	time.sleep(1)

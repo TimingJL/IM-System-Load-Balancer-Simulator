@@ -17,7 +17,11 @@ network_delay_List = []
 
 for i in range(0,120):
 	np.random.seed(i)
-	network_delay_List.append(deque(np.random.pareto(1.1, 50000) + 0.))
+	delayList = deque([])
+	for j in range(0,50000):
+		delayList.append(-math.log(1.0 - random.random()) / (1/0.6))
+	#network_delay_List.append(deque(np.random.pareto(1.1, 50000) + 0.))
+	network_delay_List.append(delayList)
 	redisDB.set("user["+str(i)+"]_network_delay",network_delay_List[i].popleft())
 
 # print network_delay_List[0]
@@ -25,16 +29,19 @@ for i in range(0,120):
 
 for i in range(0,50000):
 	random.seed(i)
-	p.append(-math.log(1.0 - random.random()) / (1/0.7))
+	p.append(-math.log(1.0 - random.random()) / (1/0.4))
 # #print p
 # print redisDB.get("LogItemNumber")
 # #print redisDB.get("LogBehavior[2][1]")
 
 # for i in range(1,int(redisDB.get("LogItemNumber"))):
 # 	temp = redisDB.get("LogBehavior[" + str(i) + "][1]")
+f = open('./log/20150809-081535 am-LogBehavior_1.txt','r') 
 
-for i in range(1,int(redisDB.get("LogItemNumber[3]"))):
-	temp = redisDB.get("LogBehavior[" + str(i) + "][3]")
+#for i in range(1,int(redisDB.get("LogItemNumber[4]"))):
+for i in f:
+	#temp = redisDB.get("LogBehavior[" + str(i) + "][4]")
+	temp = i
 	tempDict = ast.literal_eval(temp)
 	if tempDict["type"] == 0:
 		redisMQ.rpush('is_online['+str(tempDict["content"]["user_ID"])+']', str(tempDict["content"]))
