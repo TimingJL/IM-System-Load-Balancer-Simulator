@@ -36,12 +36,12 @@ for i in range(0,50000):
 
 # for i in range(1,int(redisDB.get("LogItemNumber"))):
 # 	temp = redisDB.get("LogBehavior[" + str(i) + "][1]")
-f = open('./log/20150809-081535 am-LogBehavior_1.txt','r') 
+#f = open('./log/20150809-232028 pm-LogBehavior_1.txt','r') 
 
-#for i in range(1,int(redisDB.get("LogItemNumber[4]"))):
-for i in f:
-	#temp = redisDB.get("LogBehavior[" + str(i) + "][4]")
-	temp = i
+for i in range(0,int(redisDB.get("LogItemNumber[1]"))):
+#for i in f:
+	temp = redisDB.get("LogBehavior[" + str(i) + "][1]")
+	#temp = i
 	tempDict = ast.literal_eval(temp)
 	if tempDict["type"] == 0:
 		redisMQ.rpush('is_online['+str(tempDict["content"]["user_ID"])+']', str(tempDict["content"]))
